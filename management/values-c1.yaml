@@ -1,5 +1,5 @@
 cluster:
-  name: c1
+  name: trial
   masterNodes: 3
   workerNodes: 3
   version: v1.24.6
