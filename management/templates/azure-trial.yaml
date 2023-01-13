@@ -1,227 +1,139 @@
-apiVersion: cluster.x-k8s.io/v1beta1
-kind: Cluster
-metadata:
-  labels:
-    cni: calico
-  name: capz-trial
-  namespace: default
-spec:
-  clusterNetwork:
-    pods:
-      cidrBlocks:
-      - 192.168.0.0/16
-  controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    kind: KubeadmControlPlane
-    name: capz-trial-control-plane
-  infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: AzureCluster
-    name: capz-trial
----
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: AzureCluster
-metadata:
-  name: capz-trial
-  namespace: default
-spec:
-  identityRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: AzureClusterIdentity
-    name: cluster-identity
-  location: westus2
-  networkSpec:
-    subnets:
-    - name: control-plane-subnet
-      role: control-plane
-    - name: node-subnet
-      natGateway:
-        name: node-natgateway
-      role: node
-    vnet:
-      name: capz-trial-vnet
-  resourceGroup: capz-trial
-  subscriptionID: e054c9f5-d781-4a83-a835-2296004b9fe6
----
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KubeadmControlPlane
-metadata:
-  name: capz-trial-control-plane
-  namespace: default
-spec:
-  kubeadmConfigSpec:
-    clusterConfiguration:
-      apiServer:
-        extraArgs:
-          cloud-config: /etc/kubernetes/azure.json
-          cloud-provider: azure
-        extraVolumes:
-        - hostPath: /etc/kubernetes/azure.json
-          mountPath: /etc/kubernetes/azure.json
-          name: cloud-config
-          readOnly: true
-        timeoutForControlPlane: 20m
-      controllerManager:
-        extraArgs:
-          allocate-node-cidrs: "false"
-          cloud-config: /etc/kubernetes/azure.json
-          cloud-provider: azure
-          cluster-name: capz-trial
-        extraVolumes:
-        - hostPath: /etc/kubernetes/azure.json
-          mountPath: /etc/kubernetes/azure.json
-          name: cloud-config
-          readOnly: true
-      etcd:
-        local:
-          dataDir: /var/lib/etcddisk/etcd
-          extraArgs:
-            quota-backend-bytes: "8589934592"
-    diskSetup:
-      filesystems:
-      - device: /dev/disk/azure/scsi1/lun0
-        extraOpts:
-        - -E
-        - lazy_itable_init=1,lazy_journal_init=1
-        filesystem: ext4
-        label: etcd_disk
-      - device: ephemeral0.1
-        filesystem: ext4
-        label: ephemeral0
-        replaceFS: ntfs
-      partitions:
-      - device: /dev/disk/azure/scsi1/lun0
-        layout: true
-        overwrite: false
-        tableType: gpt
-    files:
-    - contentFrom:
-        secret:
-          key: control-plane-azure.json
-          name: capz-trial-control-plane-azure-json
-      owner: root:root
-      path: /etc/kubernetes/azure.json
-      permissions: "0644"
-    initConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          azure-container-registry-config: /etc/kubernetes/azure.json
-          cloud-config: /etc/kubernetes/azure.json
-          cloud-provider: azure
-        name: '{{ ds.meta_data["local_hostname"] }}'
-    joinConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          azure-container-registry-config: /etc/kubernetes/azure.json
-          cloud-config: /etc/kubernetes/azure.json
-          cloud-provider: azure
-        name: '{{ ds.meta_data["local_hostname"] }}'
-    mounts:
-    - - LABEL=etcd_disk
-      - /var/lib/etcddisk
-    postKubeadmCommands: []
-    preKubeadmCommands: []
-  machineTemplate:
-    infrastructureRef:
-      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-      kind: AzureMachineTemplate
-      name: capz-trial-control-plane
-  replicas: 3
-  version: v1.24.6
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: AzureMachineTemplate
-metadata:
-  name: capz-trial-control-plane
-  namespace: default
-spec:
-  template:
-    spec:
-      dataDisks:
-      - diskSizeGB: 256
-        lun: 0
-        nameSuffix: etcddisk
-      osDisk:
-        diskSizeGB: 128
-        osType: Linux
-      sshPublicKey: ""
-      vmSize: Standard_D2s_v4
----
-apiVersion: cluster.x-k8s.io/v1beta1
-kind: MachineDeployment
-metadata:
-  name: capz-trial-md-0
-  namespace: default
-spec:
-  clusterName: capz-trial
-  replicas: 3
-  selector:
-    matchLabels: null
-  template:
-    spec:
-      bootstrap:
-        configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KubeadmConfigTemplate
-          name: capz-trial-md-0
-      clusterName: capz-trial
-      infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-        kind: AzureMachineTemplate
-        name: capz-trial-md-0
-      version: v1.24.6
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: AzureMachineTemplate
-metadata:
-  name: capz-trial-md-0
-  namespace: default
-spec:
-  template:
-    spec:
-      osDisk:
-        diskSizeGB: 128
-        osType: Linux
-      sshPublicKey: ""
-      vmSize: Standard_D2s_v4
----
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KubeadmConfigTemplate
-metadata:
-  name: capz-trial-md-0
-  namespace: default
-spec:
-  template:
-    spec:
-      files:
-      - contentFrom:
-          secret:
-            key: worker-node-azure.json
-            name: capz-trial-md-0-azure-json
-        owner: root:root
-        path: /etc/kubernetes/azure.json
-        permissions: "0644"
-      joinConfiguration:
-        nodeRegistration:
-          kubeletExtraArgs:
-            azure-container-registry-config: /etc/kubernetes/azure.json
-            cloud-config: /etc/kubernetes/azure.json
-            cloud-provider: azure
-          name: '{{ ds.meta_data["local_hostname"] }}'
-      preKubeadmCommands: []
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+# we can define global "provision creds"
+# or we can create custom creds for "multi tenancy".
+# It allows "clients" to essentially BYO credentials
 kind: AzureClusterIdentity
 metadata:
   labels:
     clusterctl.cluster.x-k8s.io/move-hierarchy: "true"
-  name: cluster-identity
-  namespace: default
+  name: capi-credentials
 spec:
   allowedNamespaces: {}
   clientID: 096cc0f9-fecb-4109-b5ee-faeb38610624
   clientSecret:
-    name: cluster-identity-secret
+    name: cluster-identity-secret-asf # kubectl create secret generic "${AZURE_CLUSTER_IDENTITY_SECRET_NAME}" --from-literal=clientSecret="${AZURE_CLIENT_SECRET}"
     namespace: default
   tenantID: 699c5ef4-217b-449a-a06a-1b8002557aea
   type: ServicePrincipal
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: capi-cluster
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks:
+      - 192.168.0.0/16
+  controlPlaneRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: AzureManagedControlPlane
+    name: capi-cluster-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: AzureManagedCluster
+    name: capi-cluster
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureManagedControlPlane
+metadata:
+  name: capi-cluster-control-plane
+spec:
+  identityRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: AzureClusterIdentity
+    name: capi-credentials
+    namespace: default
+  location: westeurope
+  resourceGroupName: capi-cluster
+  nodeResourceGroupName: capi-cluster-agentpools
+  sshPublicKey: c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFDQVFDYUZoOHVSeE9oMWFwTzNZdnBSejdiMnYrbWcrd0o1OEkraFdqV2VRbFdWdU10VVVqbzhQc2wyRUNWSWsvUHh1Q2d5RjE5OEJjWkdzbnkrUm9ZZDM5V0hUQ3UrVTFDQ3BubGtZcHQ0Y3dPek1QQ2NLUnQ5VElnbmJNUzIyanQzdUtoZlZPU2sxVWdKT29vWmg5eG5iejVFSFB0YlNON04yS2wzYXVDckxOeUduZDBPNkpsbGNkM0NKUjRmemN0YVdxUGFCWHBHVTF1UWJVNUVFbzMvZkYvazNLNk05UHlXSFlPV1YvcllSSzE4cVZWakc5eklNUHY1WllMOTRzazR1UjVUWE5HQWxHbWhYaDExSTdtdjJLSXcrNmFENUVZOVRJTm44RGdOdGgrZVpORWxMOEJxL0xYYXBmZ0lYMldXSUpsUExaVWx0cG5hSVIrditXZ2VPSGp1M0lSaXJaUFV4TTV5bjFTM1hjaGdVdUtiN0M1WEJZUUNxZnp4cms1cWpneXVMajRjZjAwZi91ZHNLOXdaZ1J1TENBazZRWG0vWUZ0NXpCbzlRRUh3b1NMRW4yZFJVQlFwRWsyUTg5aDJQNzBYbnN0MFViQzFjZGxZTC9qOUpEVVU1UkJaWmkrMjVYb2FIeWJOeDF2RzV5dVBycWl4cU9uaUpmMURmMThDN0RWQThhZFVyTmxBSmZaK1J2bFNHSkdIcncyaGRpTHRjQ2tCRW00VFBiTk1CQSszaUYxa0lqUnNPc1BBTFRsVkJjaGFScEU4ZXBFMFZSK1NBd2IvK3pVMEt2dEJ4VVozVFNTRkxxWlVNa0hSSXJEUVVYZ2J4SFQ2SzhZdHJvSCtYVXZwakRYby9aSExva1ViZG5LY1d1clozL0Fidkd2Z3dkRUtpQVJGK3NtTXc9PSAK
+  subscriptionID: e054c9f5-d781-4a83-a835-2296004b9fe6
+  version: v1.24.3
+  networkPolicy: calico 
+  networkPlugin: azure
+  #apiServerAccessProfile:
+  #  enablePrivateCluster: true
+  #  enablePrivateClusterPublicFQDN: true
+  #  privateDNSZone: None
+  sku:
+    tier: Free
+  virtualNetwork:
+    cidrBlock: 10.1.0.0/16
+    name: aks-asf-vnet
+    resourceGroup: aks-asf-vnet
+    subnet:
+      cidrBlock: 10.1.0.0/20
+      name: default
+  #addonProfiles:
+  #- name: azureKeyvaultSecretsProvider
+  #  enabled: true
+  #- name: azurepolicy
+  #  enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureManagedCluster
+metadata:
+  name: capi-cluster
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachinePool
+metadata:
+  name: syspool
+spec:
+  clusterName: capi-cluster
+  replicas: 1
+  template:
+    spec:
+      bootstrap:
+          dataSecretName: ""
+      clusterName: capi-cluster
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: AzureManagedMachinePool
+        name: syspool
+        namespace: default
+      version: v1.24.3
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureManagedMachinePool
+metadata:
+  name: syspool
+spec:
+  mode: System
+  osDiskSizeGB: 30
+  sku: Standard_D2s_v3
+  scaling:
+    minSize: 1
+    maxSize: 10
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachinePool
+metadata:
+  name: usrpool
+spec:
+  clusterName: capi-cluster
+  replicas: 1
+  template:
+    spec:
+      bootstrap:
+        dataSecretName: ""
+      clusterName: capi-cluster
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: AzureManagedMachinePool
+        name: usrpool
+        namespace: default
+      version: v1.24.3
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureManagedMachinePool
+metadata:
+  name: usrpool
+spec:
+  mode: User
+  osDiskSizeGB: 40
+  sku: Standard_D2s_v4
+  scaling:
+    minSize: 1
+    maxSize: 10
