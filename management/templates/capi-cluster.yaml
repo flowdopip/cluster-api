@@ -51,7 +51,7 @@ spec:
   resourceGroupName: trial-cluster
   nodeResourceGroupName: trial-cluster-agentpools
   subscriptionID: e054c9f5-d781-4a83-a835-2296004b9fe6
-  version: v1.24.3
+  version: v1.25.4
   networkPolicy: calico 
   networkPlugin: azure
   sku:
@@ -81,7 +81,7 @@ spec:
         kind: AzureManagedMachinePool
         name: syspool
         namespace: default
-      version: v1.24.3
+      version: v1.25.4
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedMachinePool
@@ -114,7 +114,7 @@ spec:
         kind: AzureManagedMachinePool
         name: usrpool
         namespace: default
-      version: v1.24.3
+      version: v1.25.4
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedMachinePool
