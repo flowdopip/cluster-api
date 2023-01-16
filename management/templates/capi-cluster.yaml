@@ -4,6 +4,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 # It allows "clients" to essentially BYO credentials
 kind: AzureClusterIdentity
 metadata:
+  namespace: default
   labels:
     clusterctl.cluster.x-k8s.io/move-hierarchy: "true"
   name: trial-credentials
@@ -20,6 +21,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: trial-cluster
+  namespace: default
 spec:
   clusterNetwork:
     services:
@@ -38,6 +40,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedControlPlane
 metadata:
   name: trial-cluster-control-plane
+  namespace: default
 spec:
   identityRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -58,11 +61,13 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedCluster
 metadata:
   name: trial-cluster
+  namespace: default
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool
 metadata:
   name: syspool
+  namespace: default
 spec:
   clusterName: trial-cluster
   replicas: 1
@@ -82,6 +87,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedMachinePool
 metadata:
   name: syspool
+  namespace: default
 spec:
   mode: System
   osDiskSizeGB: 30
@@ -94,6 +100,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool
 metadata:
   name: usrpool
+  namespace: default
 spec:
   clusterName: trial-cluster
   replicas: 1
@@ -113,6 +120,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureManagedMachinePool
 metadata:
   name: usrpool
+  namespace: default
 spec:
   mode: User
   osDiskSizeGB: 40
